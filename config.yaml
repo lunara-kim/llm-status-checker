@@ -1,0 +1,14 @@
+models:
+  openai:
+    name: "OpenAI GPT-4o"
+    api_key: "OPENAI_API_KEY"
+    model: "gpt-4o"
+    base_url: "https://api.openai.com/v1"
+    test_message: "API TEST"
+    
+  huggingface:
+    name: "HuggingFace GLM-4.7"
+    api_key: "HUGGINGFACE_API_KEY"
+    model: "zai-org/GLM-4.7:novita"
+    base_url: "https://router.huggingface.co/v1"
+    test_message: "What is the capital of France?"
