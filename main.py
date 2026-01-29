@@ -3,6 +3,8 @@ import yaml
 import asyncio
 import certifi
 from openai import OpenAI
+from anthropic import Anthropic
+import google.generativeai as genai
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,7 +21,7 @@ templates = Jinja2Templates(directory="templates")
 
 class ModelStatus(BaseModel):
     name: str
-    status: str  # "success", "error", "checking"
+    status: str  # "success", "error", "checking", "disabled"
     response: str | None = None
     error: str | None = None
     response_time: float | None = None
@@ -33,6 +35,10 @@ def load_config():
 
 def test_openai_model(config: Dict[str, Any]) -> ModelStatus:
     model_config = config["models"]["openai"]
+    
+    if not model_config.get("enabled", True):
+        return ModelStatus(name=model_config["name"], status="disabled")
+    
     os.environ['SSL_CERT_FILE'] = oldValue
     status = ModelStatus(name=model_config["name"], status="checking")
     
@@ -67,6 +73,10 @@ def test_openai_model(config: Dict[str, Any]) -> ModelStatus:
 
 def test_huggingface_model(config: Dict[str, Any]) -> ModelStatus:
     model_config = config["models"]["huggingface"]
+    
+    if not model_config.get("enabled", True):
+        return ModelStatus(name=model_config["name"], status="disabled")
+    
     os.environ['SSL_CERT_FILE'] = certifi.where()
     status = ModelStatus(name=model_config["name"], status="checking")
     
@@ -97,6 +107,71 @@ def test_huggingface_model(config: Dict[str, Any]) -> ModelStatus:
     
     return status
 
+def test_claude_model(config: Dict[str, Any]) -> ModelStatus:
+    model_config = config["models"]["claude"]
+    
+    if not model_config.get("enabled", True):
+        return ModelStatus(name=model_config["name"], status="disabled")
+    
+    os.environ['SSL_CERT_FILE'] = oldValue
+    status = ModelStatus(name=model_config["name"], status="checking")
+    
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        client = Anthropic(
+            api_key=model_config["api_key"]
+        )
+        
+        response = client.messages.create(
+            model=model_config["model"],
+            max_tokens=1024,
+            messages=[
+                {"role": "user", "content": model_config["test_message"]}
+            ]
+        )
+        
+        end_time = asyncio.get_event_loop().time()
+        status.response_time = round((end_time - start_time) * 1000, 2)
+        
+        status.status = "success"
+        status.response = response.content[0].text
+        
+    except Exception as e:
+        status.status = "error"
+        status.error = str(e)
+    
+    return status
+
+def test_gemini_model(config: Dict[str, Any]) -> ModelStatus:
+    model_config = config["models"]["gemini"]
+    
+    if not model_config.get("enabled", True):
+        return ModelStatus(name=model_config["name"], status="disabled")
+    
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+    status = ModelStatus(name=model_config["name"], status="checking")
+    
+    try:
+        start_time = asyncio.get_event_loop().time()
+        
+        genai.configure(api_key=model_config["api_key"])
+        model = genai.GenerativeModel(model_config["model"])
+        
+        response = model.generate_content(model_config["test_message"])
+        
+        end_time = asyncio.get_event_loop().time()
+        status.response_time = round((end_time - start_time) * 1000, 2)
+        
+        status.status = "success"
+        status.response = response.text
+        
+    except Exception as e:
+        status.status = "error"
+        status.error = str(e)
+    
+    return status
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -108,10 +183,14 @@ async def get_status():
         
         openai_status = test_openai_model(config)
         hf_status = test_huggingface_model(config)
+        claude_status = test_claude_model(config)
+        gemini_status = test_gemini_model(config)
         
         return {
             "openai": openai_status.dict(),
             "huggingface": hf_status.dict(),
+            "claude": claude_status.dict(),
+            "gemini": gemini_status.dict(),
             "timestamp": asyncio.get_event_loop().time()
         }
     except Exception as e:

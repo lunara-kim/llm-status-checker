@@ -40,6 +40,11 @@ body {
     background-color: #ffc107;
 }
 
+.status-dot.disabled {
+    background-color: #6c757d;
+    animation: none;
+}
+
 @keyframes pulse {
     0% { opacity: 1; }
     50% { opacity: 0.5; }
@@ -61,6 +66,10 @@ body {
 
 .status-text.checking {
     color: #ffc107;
+}
+
+.status-text.disabled {
+    color: #6c757d;
 }
 
 .response-time {
@@ -102,4 +111,8 @@ body {
 
 .card-header.checking {
     border-left: 4px solid #ffc107;
+}
+
+.card-header.disabled {
+    border-left: 4px solid #6c757d;
 }

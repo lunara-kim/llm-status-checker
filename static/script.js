@@ -41,6 +41,14 @@ async function updateModelStatus(modelName, data) {
         response.style.display = 'none';
         error.style.display = 'block';
         
+    } else if (data.status === 'disabled') {
+        statusDot.classList.add('disabled');
+        statusText.classList.add('disabled');
+        statusText.textContent = '비활성화';
+        header.classList.add('disabled');
+        
+        response.style.display = 'none';
+        error.style.display = 'none';
     } else if (data.status === 'checking') {
         statusDot.classList.add('checking');
         statusText.classList.add('checking');
@@ -57,12 +65,16 @@ async function checkStatus() {
         // 확인 중 상태로 설정
         await updateModelStatus('openai', { status: 'checking' });
         await updateModelStatus('huggingface', { status: 'checking' });
+        await updateModelStatus('claude', { status: 'checking' });
+        await updateModelStatus('gemini', { status: 'checking' });
         
         const response = await fetch('/api/status');
         const data = await response.json();
         
         await updateModelStatus('openai', data.openai);
         await updateModelStatus('huggingface', data.huggingface);
+        await updateModelStatus('claude', data.claude);
+        await updateModelStatus('gemini', data.gemini);
         
         // 마지막 확인 시간 업데이트
         const lastCheck = new Date().toLocaleString('ko-KR');
@@ -72,13 +84,21 @@ async function checkStatus() {
         console.error('상태 확인 실패:', error);
         
         // 네트워크 오류 처리
-        await updateModelStatus('openai', { 
-            status: 'error', 
-            error: '서버에 연결할 수 없습니다' 
+        await updateModelStatus('openai', {
+            status: 'error',
+            error: '서버에 연결할 수 없습니다'
         });
-        await updateModelStatus('huggingface', { 
-            status: 'error', 
-            error: '서버에 연결할 수 없습니다' 
+        await updateModelStatus('huggingface', {
+            status: 'error',
+            error: '서버에 연결할 수 없습니다'
+        });
+        await updateModelStatus('claude', {
+            status: 'error',
+            error: '서버에 연결할 수 없습니다'
+        });
+        await updateModelStatus('gemini', {
+            status: 'error',
+            error: '서버에 연결할 수 없습니다'
         });
     }
 }
