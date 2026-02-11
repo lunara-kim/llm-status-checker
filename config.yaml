@@ -1,5 +1,6 @@
 models:
   openai:
+    enabled: true
     name: "OpenAI GPT-4o"
     api_key: "OPENAI_API_KEY"
     model: "gpt-4o"
@@ -7,8 +8,25 @@ models:
     test_message: "API TEST"
     
   huggingface:
+    enabled: true
     name: "HuggingFace GLM-4.7"
     api_key: "HUGGINGFACE_API_KEY"
     model: "zai-org/GLM-4.7:novita"
     base_url: "https://router.huggingface.co/v1"
     test_message: "What is the capital of France?"
+
+  claude:
+    enabled: false
+    name: "Anthropic Claude-3.7-Sonnet"
+    api_key: "<YOUR_ANTHROPIC_API_KEY>"
+    model: "claude-3-7-sonnet-20250219"
+    base_url: "https://api.anthropic.com/v1"
+    test_message: "Hello, how are you?"
+
+  gemini:
+    enabled: false
+    name: "Google Gemini-1.5-Pro"
+    api_key: "<YOUR_GOOGLE_API_KEY>"
+    model: "gemini-1.5-pro"
+    base_url: "https://generativelanguage.googleapis.com/v1beta"
+    test_message: "What is 2+2?"
