@@ -12,10 +12,19 @@ from fastapi.responses import HTMLResponse
 from fastapi import Request
 from pydantic import BaseModel
 from typing import Dict, Any
+from contextlib import asynccontextmanager
+import database
 
 oldValue = os.environ['SSL_CERT_FILE']
 
-app = FastAPI(title="LLM Status Checker")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 시작 시 DB 초기화
+    database.init_db()
+    yield
+    # 종료 시 정리 작업 (필요시)
+
+app = FastAPI(title="LLM Status Checker", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -186,6 +195,32 @@ async def get_status():
         claude_status = test_claude_model(config)
         gemini_status = test_gemini_model(config)
         
+        # DB에 상태 저장
+        database.save_status(
+            "openai",
+            openai_status.status,
+            openai_status.response_time,
+            openai_status.error
+        )
+        database.save_status(
+            "huggingface",
+            hf_status.status,
+            hf_status.response_time,
+            hf_status.error
+        )
+        database.save_status(
+            "claude",
+            claude_status.status,
+            claude_status.response_time,
+            claude_status.error
+        )
+        database.save_status(
+            "gemini",
+            gemini_status.status,
+            gemini_status.response_time,
+            gemini_status.error
+        )
+        
         return {
             "openai": openai_status.dict(),
             "huggingface": hf_status.dict(),
@@ -195,6 +230,24 @@ async def get_status():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"상태 확인 실패: {e}")
+
+@app.get("/api/history")
+async def get_history(hours: int = 24):
+    """히스토리 데이터 조회"""
+    try:
+        history = database.get_history(hours)
+        return {"history": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"히스토리 조회 실패: {e}")
+
+@app.get("/api/stats")
+async def get_stats(hours: int = 24):
+    """가동률 통계 조회"""
+    try:
+        stats = database.get_uptime_stats(hours)
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"통계 조회 실패: {e}")
 
 if __name__ == "__main__":
     import uvicorn

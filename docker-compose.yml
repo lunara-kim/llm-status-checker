@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  llm-status-checker:
+    build: .
+    container_name: llm-status-checker
+    ports:
+      - "9876:9876"
+    volumes:
+      # config.yaml을 호스트에서 마운트
+      - ./config.yaml:/app/config.yaml
+      # 데이터베이스 영구 저장
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Seoul
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:9876')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
