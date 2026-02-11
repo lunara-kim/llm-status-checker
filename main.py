@@ -185,47 +185,42 @@ def test_gemini_model(config: Dict[str, Any]) -> ModelStatus:
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+def _test_model_safe(model_key: str, test_fn, config: Dict[str, Any]) -> ModelStatus:
+    """config에 모델이 없거나 비활성화된 경우 안전하게 처리"""
+    models = config.get("models", {})
+    if model_key not in models:
+        return ModelStatus(name=model_key, status="disabled")
+    return test_fn(config)
+
 @app.get("/api/status")
 async def get_status():
     try:
         config = load_config()
         
-        openai_status = test_openai_model(config)
-        hf_status = test_huggingface_model(config)
-        claude_status = test_claude_model(config)
-        gemini_status = test_gemini_model(config)
+        # 각 모델별 테스트 함수 매핑
+        model_tests = {
+            "openai": test_openai_model,
+            "huggingface": test_huggingface_model,
+            "claude": test_claude_model,
+            "gemini": test_gemini_model,
+        }
         
-        # DB에 상태 저장
-        database.save_status(
-            "openai",
-            openai_status.status,
-            openai_status.response_time,
-            openai_status.error
-        )
-        database.save_status(
-            "huggingface",
-            hf_status.status,
-            hf_status.response_time,
-            hf_status.error
-        )
-        database.save_status(
-            "claude",
-            claude_status.status,
-            claude_status.response_time,
-            claude_status.error
-        )
-        database.save_status(
-            "gemini",
-            gemini_status.status,
-            gemini_status.response_time,
-            gemini_status.error
-        )
+        results = {}
+        for key, test_fn in model_tests.items():
+            status = _test_model_safe(key, test_fn, config)
+            results[key] = status
+            
+            # DB에 상태 저장 (disabled 제외)
+            if status.status != "disabled":
+                database.save_status(
+                    key,
+                    status.status,
+                    status.response_time,
+                    status.error
+                )
         
         return {
-            "openai": openai_status.dict(),
-            "huggingface": hf_status.dict(),
-            "claude": claude_status.dict(),
-            "gemini": gemini_status.dict(),
+            **{k: v.dict() for k, v in results.items()},
             "timestamp": asyncio.get_event_loop().time()
         }
     except Exception as e:
