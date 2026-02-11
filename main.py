@@ -11,11 +11,11 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi import Request
 from pydantic import BaseModel
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
 import database
 
-oldValue = os.environ['SSL_CERT_FILE']
+oldValue = os.environ.get('SSL_CERT_FILE', '')
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,9 +31,9 @@ templates = Jinja2Templates(directory="templates")
 class ModelStatus(BaseModel):
     name: str
     status: str  # "success", "error", "checking", "disabled"
-    response: str | None = None
-    error: str | None = None
-    response_time: float | None = None
+    response: Optional[str] = None
+    error: Optional[str] = None
+    response_time: Optional[float] = None
 
 def load_config():
     try:
@@ -48,7 +48,10 @@ def test_openai_model(config: Dict[str, Any]) -> ModelStatus:
     if not model_config.get("enabled", True):
         return ModelStatus(name=model_config["name"], status="disabled")
     
-    os.environ['SSL_CERT_FILE'] = oldValue
+    if oldValue:
+        os.environ['SSL_CERT_FILE'] = oldValue
+    elif 'SSL_CERT_FILE' in os.environ:
+        del os.environ['SSL_CERT_FILE']
     status = ModelStatus(name=model_config["name"], status="checking")
     
     try:
@@ -122,7 +125,10 @@ def test_claude_model(config: Dict[str, Any]) -> ModelStatus:
     if not model_config.get("enabled", True):
         return ModelStatus(name=model_config["name"], status="disabled")
     
-    os.environ['SSL_CERT_FILE'] = oldValue
+    if oldValue:
+        os.environ['SSL_CERT_FILE'] = oldValue
+    elif 'SSL_CERT_FILE' in os.environ:
+        del os.environ['SSL_CERT_FILE']
     status = ModelStatus(name=model_config["name"], status="checking")
     
     try:
