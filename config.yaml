@@ -2,7 +2,7 @@ models:
   openai:
     enabled: true
     name: "OpenAI GPT-4o"
-    api_key: "OPENAI_API_KEY"
+    api_key: "<YOUR_OPENAI_API_KEY>"
     model: "gpt-4o"
     base_url: "https://api.openai.com/v1"
     test_message: "API TEST"
